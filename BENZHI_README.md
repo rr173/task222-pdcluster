@@ -61,16 +61,9 @@ docker run --rm my-image:latest --smoke-test
 docker run --rm -p 8080:8080 my-image:latest --addr :8080
 ```
 
-双架构基线验证使用仓库内置脚本：
-
-```bash
-python3 scripts/docker_baseline_validation.py \
-  --project-dir <项目根> --verify-and-record
-```
-
-该脚本对 `linux/amd64` 与 `linux/arm64` 分别执行 `docker buildx build --load` +
-`docker run --smoke-test`，四项均退出码 0 才写入
-`.private/docker_baseline_validation.json`（status=passed）。
+双架构基线验证由出题侧验收工具执行，不依赖仓库内置脚本。验收时会针对
+`linux/amd64` 与 `linux/arm64` 分别执行镜像构建和 `--smoke-test`，两种平台的构建与
+自检都成功后才记录双架构证明。
 
 ## API 前缀
 
