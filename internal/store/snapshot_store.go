@@ -17,7 +17,7 @@ func (s *SnapshotStore) Insert(sn *model.Snapshot) error {
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		sn.ID, sn.TrialID, sn.Version, sn.Status, sn.StateJSON, sn.Summary, sn.CreatedAt, nullIfEmpty(sn.PublishedAt))
 	if isUniqueViolation(err) {
-		return nil
+		return model.ErrConflict
 	}
 	if err != nil {
 		return fmt.Errorf("insert snapshot: %w", err)

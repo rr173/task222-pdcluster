@@ -33,7 +33,7 @@ func (s *SnapshotService) Create(trialID string) (*model.Snapshot, error) {
 	sn := &model.Snapshot{
 		ID:        store.NewID(),
 		TrialID:   trialID,
-		Version:   maxV,
+		Version:   snapshot.NextVersion(maxV),
 		Status:    model.SnapshotDraft,
 		StateJSON: stateJSON,
 		Summary:   state.Summary(),

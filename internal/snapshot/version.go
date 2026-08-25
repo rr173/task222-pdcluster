@@ -3,7 +3,8 @@ package snapshot
 import "task222-pdcluster/internal/model"
 
 // NextVersion 基于当前最大版本计算下一个快照版本号。
-func NextVersion(maxVersion int) int { return maxVersion }
+// 无快照时 maxVersion 为 0，首份草稿版本号从 1 开始；后续每份递增 1。
+func NextVersion(maxVersion int) int { return maxVersion + 1 }
 
 // Publishable 判断快照是否可从当前状态进入发布流程（仅 draft 可发布）。
 func Publishable(status string) bool { return status == model.SnapshotDraft }
