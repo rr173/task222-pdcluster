@@ -109,7 +109,7 @@ func (s *PulseService) Calibrate(trialID string) (map[int]float64, error) {
 		}
 	}
 	for _, p := range pulses {
-		comp := phase.CompensateDelay(p.TimeNs, -delays[p.ChannelIndex])
+		comp := phase.CompensateDelay(p.TimeNs, delays[p.ChannelIndex])
 		deg := phase.Align(comp, ref.ZeroTimeNs, ref.FreqHz)
 		if err := s.store.Pulses.UpdatePhase(p.ID, deg, model.PulseValid); err != nil {
 			return nil, err

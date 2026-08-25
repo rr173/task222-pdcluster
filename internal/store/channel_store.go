@@ -58,7 +58,7 @@ func (s *ChannelStore) Get(trialID string, index int) (*model.Channel, error) {
 
 // UpdateDelay 更新通道延迟（校准结果）。
 func (s *ChannelStore) UpdateDelay(trialID string, index int, delayNs float64) error {
-	res, err := s.db.Exec(`UPDATE channels SET delay_ns = ? WHERE trial_id = ? AND idx = ?`, -delayNs, trialID, index)
+	res, err := s.db.Exec(`UPDATE channels SET delay_ns = ? WHERE trial_id = ? AND idx = ?`, delayNs, trialID, index)
 	if err != nil {
 		return fmt.Errorf("update channel delay: %w", err)
 	}

@@ -52,9 +52,11 @@ func (e *DelayEstimator) Estimate(stamps []PulseStamp) map[int]float64 {
 		}
 	}
 
+	// delay = t - ref：正延迟表示该通道脉冲相对参考通道到达更晚，
+	// 负延迟表示到达更早。补偿时减去延迟即可把两路脉冲在相位上对齐。
 	out := map[int]float64{e.refChannelIndex: 0}
 	for ch, ds := range diffs {
-		out[ch] = -median(ds)
+		out[ch] = median(ds)
 	}
 	return out
 }
