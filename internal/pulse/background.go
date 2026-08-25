@@ -27,11 +27,12 @@ func EstimateNoiseFloor(amplitudes []float64, quantile float64) float64 {
 }
 
 // ClassifyBackground 按阈值把脉冲分类，返回背景脉冲 ID 列表。
-// threshold = noiseFloor * gain，低于阈值判为背景噪声。
+// threshold = noiseFloor * gain，严格低于阈值判为背景噪声；
+// 恰好等于阈值的脉冲不判为背景，予以保留。
 func ClassifyBackground(pulses []*model.Pulse, thresholdMv float64) []string {
 	var out []string
 	for _, p := range pulses {
-		if p.AmplitudeMv <= thresholdMv {
+		if p.AmplitudeMv < thresholdMv {
 			out = append(out, p.ID)
 		}
 	}

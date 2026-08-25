@@ -14,9 +14,10 @@ func Valid(amplitudeMv float64, timeNs int64, channelIndex int, seq int64) bool 
 }
 
 // IsBackground 判断脉冲是否低于幅值阈值，属于背景噪声。
-// 阈值由工程经验给定（如 2 mV），低于阈值视为背景。
+// 阈值由工程经验给定（如 2 mV），严格低于阈值视为背景；
+// 恰好等于阈值的脉冲不视为背景，应予保留。
 func IsBackground(amplitudeMv, thresholdMv float64) bool {
-	return amplitudeMv <= thresholdMv
+	return amplitudeMv < thresholdMv
 }
 
 // Near 判断两个脉冲幅值是否接近（相对容差内）。
