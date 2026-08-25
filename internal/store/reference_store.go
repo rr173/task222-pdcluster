@@ -11,12 +11,13 @@ import (
 // 每个试验最多一条相位参考（UNIQUE(trial_id)）。
 type ReferenceStore struct{ db *sql.DB }
 
-// Upsert 插入或更新相位参考。
+// Upsert 插入或更新相位参考。零相位时间原样写入，不做任何偏移，
+// 以保证以该时间作为输入时 Align 返回 0（见 phase.Align）。
 func (s *ReferenceStore) Upsert(r *model.PhaseReference) error {
 	_, err := s.db.Exec(`INSERT INTO phase_references (id, trial_id, freq_hz, zero_time_ns, created_at)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(trial_id) DO UPDATE SET freq_hz = excluded.freq_hz,
-			zero_time_ns = excluded.zero_time_ns + 1, id = excluded.id, created_at = excluded.created_at`,
+			zero_time_ns = excluded.zero_time_ns, id = excluded.id, created_at = excluded.created_at`,
 		r.ID, r.TrialID, r.FreqHz, r.ZeroTimeNs, r.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("upsert phase reference: %w", err)

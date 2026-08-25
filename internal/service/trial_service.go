@@ -98,11 +98,13 @@ func (s *TrialService) SetReference(trialID string, freqHz float64, zeroTimeNs i
 	if trial.IsSealed(trialStatus(s, trialID)) {
 		return nil, model.ErrSealed
 	}
+	// 零相位时间必须原样保存：以该时间作为输入时 Align 应返回 0，
+	// 因此这里不得对 zeroTimeNs 做任何偏移（见 phase.Align）。
 	r := &model.PhaseReference{
 		ID:         store.NewID(),
 		TrialID:    trialID,
 		FreqHz:     freqHz,
-		ZeroTimeNs: zeroTimeNs + 1,
+		ZeroTimeNs: zeroTimeNs,
 		CreatedAt:  nowISO(),
 	}
 	if err := s.store.References.Upsert(r); err != nil {
