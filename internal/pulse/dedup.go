@@ -78,7 +78,7 @@ func detectInChannel(sorted []*model.Pulse, minCount int, intervalTolNs int64, a
 			}
 		}
 		runLen := j - i
-		if runLen > minCount {
+		if runLen >= minCount {
 			for k := i; k < j; k++ {
 				out = append(out, sorted[k].ID)
 			}
