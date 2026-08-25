@@ -22,10 +22,11 @@ func (s *InterpretationStore) Insert(it *model.Interpretation) error {
 	return nil
 }
 
-// ListByTrial 返回试验的全部解释，按置信度降序。
+// ListByTrial 返回试验的全部解释，按置信度降序（与推断输出顺序一致，
+// 最高置信度候选排最前），同置信度按插入顺序保持稳定。
 func (s *InterpretationStore) ListByTrial(trialID string) ([]*model.Interpretation, error) {
 	rows, err := s.db.Query(`SELECT id, trial_id, defect_type, confidence, evidence, status, created_at
-		FROM interpretations WHERE trial_id = ? ORDER BY confidence ASC`, trialID)
+		FROM interpretations WHERE trial_id = ? ORDER BY confidence DESC, id ASC`, trialID)
 	if err != nil {
 		return nil, fmt.Errorf("list interpretations: %w", err)
 	}

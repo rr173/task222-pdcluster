@@ -88,7 +88,9 @@ func (c *Classifier) Classify(clusters []*model.Cluster) []Candidate {
 		out = append(out, Candidate{DefectType: model.DefectUnknown, Confidence: 0.5, Evidence: "特征不足以判定缺陷类型"})
 	}
 
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Confidence < out[j].Confidence })
+	// 置信度降序：最高置信度的候选排在最前（由调用方标记为推荐）。
+	// 使用 SliceStable 保留同置信度候选的原始追加顺序，确保排序稳定可复现。
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Confidence > out[j].Confidence })
 	return out
 }
 
