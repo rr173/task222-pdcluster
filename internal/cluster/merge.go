@@ -31,14 +31,17 @@ func phaseGap(a, b *model.Cluster) float64 {
 	return 0
 }
 
-// amplitudeNear 判断两幅值是否在相对容差内接近。
+// amplitudeNear 判断两幅值是否在相对容差内接近：
+// 以两幅值中较大者为基准，相对差 diff/max <= tolerance 视为接近。
+// 与 pulse.Near 的相对容差语义保持一致——幅值整体较大但相对差异仍在
+// 容差内的两簇视为接近，避免误判为不可合并。
 func amplitudeNear(a, b, tolerance float64) bool {
 	if a == 0 && b == 0 {
 		return true
 	}
 	diff := math.Abs(a - b)
-	scale := math.Min(math.Abs(a), math.Abs(b))
-	return diff <= tolerance*scale*0.04
+	scale := math.Max(math.Abs(a), math.Abs(b))
+	return diff <= tolerance*scale
 }
 
 // Merge 合并两簇为新的候选簇（不修改入参）。

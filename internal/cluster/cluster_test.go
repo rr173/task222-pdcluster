@@ -47,6 +47,22 @@ func TestMergeableAndMerge(t *testing.T) {
 	}
 }
 
+// TestMergeableLargeButRelativelyClose 验证修复：幅值整体较大但相对差异仍在
+// 容差内的两簇应判为可合并，而非因幅值大被错误拒绝。
+func TestMergeableLargeButRelativelyClose(t *testing.T) {
+	// 相位相邻，幅值 1000/1010：相对差约 1%，远在 20% 容差内。
+	big := &model.Cluster{PhaseStartDeg: 10, PhaseEndDeg: 20, PhaseCenterDeg: 15, PulseCount: 4, AvgAmplitudeMv: 1000, MaxAmplitudeMv: 1100}
+	bigB := &model.Cluster{PhaseStartDeg: 22, PhaseEndDeg: 32, PhaseCenterDeg: 27, PulseCount: 4, AvgAmplitudeMv: 1010, MaxAmplitudeMv: 1120}
+	if !Mergeable(big, bigB, 5, 0.2) {
+		t.Fatalf("large but relatively-close clusters should be mergeable")
+	}
+	// 相对差超出容差：1000 vs 1400，相对差 40% > 20%，应拒绝。
+	bigFar := &model.Cluster{PhaseStartDeg: 22, PhaseEndDeg: 32, PhaseCenterDeg: 27, PulseCount: 4, AvgAmplitudeMv: 1400, MaxAmplitudeMv: 1500}
+	if Mergeable(big, bigFar, 5, 0.2) {
+		t.Fatalf("clusters with amplitude diff beyond tolerance should not be mergeable")
+	}
+}
+
 func TestCompareStable(t *testing.T) {
 	prev := []*model.Cluster{
 		{PhaseCenterDeg: 30, PulseCount: 10},

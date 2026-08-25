@@ -83,6 +83,11 @@ func (s *ClusterService) MergeClusters(idA, idB string) (*model.Cluster, error) 
 	if a.TrialID != b.TrialID {
 		return nil, model.ErrInvalidArgument
 	}
+	// 只能合并仍有效的簇：已 rejected 的原簇不应再作为合并来源，
+	// 否则会破坏合并结果与原簇状态的一致性。
+	if a.Status == model.ClusterRejected || b.Status == model.ClusterRejected {
+		return nil, model.ErrInvalidArgument
+	}
 	if !cluster.Mergeable(a, b, 20, 0.1) {
 		return nil, model.ErrInvalidArgument
 	}
@@ -92,13 +97,9 @@ func (s *ClusterService) MergeClusters(idA, idB string) (*model.Cluster, error) 
 	now := nowISO()
 	merged.CreatedAt = now
 	merged.UpdatedAt = now
-	if err := s.store.Clusters.Insert(merged); err != nil {
-		return nil, err
-	}
-	if err := s.store.Clusters.UpdateStatus(a.ID, model.ClusterRejected, now); err != nil {
-		return nil, err
-	}
-	if err := s.store.Clusters.UpdateStatus(b.ID, model.ClusterRejected, now); err != nil {
+	// 原子地写入合并簇并把两个原簇标记为 rejected：任一步失败整体回滚，
+	// 保证合并结果与原簇状态一致（不会出现原簇未拒绝的中间态）。
+	if err := s.store.Clusters.MergeClusters(merged, a.ID, b.ID, now); err != nil {
 		return nil, err
 	}
 	return merged, nil
