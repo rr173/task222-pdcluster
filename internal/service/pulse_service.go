@@ -27,37 +27,55 @@ type PulseInput struct {
 	AmplitudeMv  float64
 }
 
+// IngestBatch 批量接收脉冲，具有全有或全无语义：只要批次中任一脉冲
+// 参数非法、试验不可写或通道不存在，整批都不会写入任何记录。
+// 同 trial/channel/seq 的重复事件按幂等跳过（计入 Duplicate）。
 func (s *PulseService) IngestBatch(trialID string, inputs []PulseInput) (*IngestResult, error) {
 	result := &IngestResult{}
+	if len(inputs) == 0 {
+		return result, nil
+	}
+
+	// 试验状态整批只校验一次：封存试验拒绝写入。
+	t, err := s.store.Trials.Get(trialID)
+	if err != nil {
+		return result, err
+	}
+	if !trial.Writable(t.Status) {
+		return result, model.ErrSealed
+	}
+
+	// 先把整批构造为待写入脉冲，任一参数非法或通道未知则提前返回，
+	// 保证在此之前不触发任何写入，实现全有或全无。
+	pulses := make([]*model.Pulse, 0, len(inputs))
 	for _, in := range inputs {
 		if !pulse.Valid(in.AmplitudeMv, in.TimeNs, in.ChannelIndex, in.Seq) {
 			return result, model.ErrInvalidArgument
 		}
-		t, err := s.store.Trials.Get(trialID)
-		if err != nil {
-			return result, err
-		}
-		if !trial.Writable(t.Status) {
-			return result, model.ErrSealed
-		}
 		if _, err := s.store.Channels.Get(trialID, in.ChannelIndex); err != nil {
 			return result, err
 		}
-		p := &model.Pulse{
-			ID: store.NewID(), TrialID: trialID, ChannelID: in.ChannelID,
-			ChannelIndex: in.ChannelIndex, Seq: in.Seq, TimeNs: in.TimeNs,
-			AmplitudeMv: in.AmplitudeMv, PhaseDeg: -1,
-			Status: model.PulseUncalibrated, CreatedAt: nowISO(),
-		}
-		inserted, err := s.store.Pulses.InsertBatch([]*model.Pulse{p})
-		if err != nil {
-			return result, err
-		}
-		result.Inserted += inserted
-		if inserted == 0 {
-			result.Duplicate++
-		}
+		pulses = append(pulses, &model.Pulse{
+			ID:            store.NewID(),
+			TrialID:       trialID,
+			ChannelID:     in.ChannelID,
+			ChannelIndex:  in.ChannelIndex,
+			Seq:           in.Seq,
+			TimeNs:        in.TimeNs,
+			AmplitudeMv:   in.AmplitudeMv,
+			PhaseDeg:      -1,
+			Status:        model.PulseUncalibrated,
+			CreatedAt:     nowISO(),
+		})
 	}
+
+	// 整批在单个事务内原子写入：重复事件幂等跳过，写入失败整批回滚。
+	inserted, err := s.store.Pulses.InsertBatch(pulses)
+	if err != nil {
+		return result, err
+	}
+	result.Inserted = inserted
+	result.Duplicate = len(pulses) - inserted
 	return result, nil
 }
 

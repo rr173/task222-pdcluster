@@ -11,9 +11,20 @@ import (
 // 幂等键 UNIQUE(trial_id, channel_index, seq) 防止重复提交同一脉冲。
 type PulseStore struct{ db *sql.DB }
 
+// execer 是 *sql.DB 与 *sql.Tx 共同满足的最小接口，便于在同一条插入 SQL 上复用。
+type execer interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
 // Insert 插入脉冲；命中唯一键返回 (false, nil) 表示重复，其余错误直接返回。
 func (s *PulseStore) Insert(p *model.Pulse) (bool, error) {
-	_, err := s.db.Exec(`INSERT INTO pulses
+	return insertPulse(s.db, p)
+}
+
+// insertPulse 在给定执行器（DB 或事务）上写入单个脉冲；
+// 命中唯一键返回 (false, nil) 表示重复（幂等跳过），其余错误返回。
+func insertPulse(ex execer, p *model.Pulse) (bool, error) {
+	_, err := ex.Exec(`INSERT INTO pulses
 		(id, trial_id, channel_id, channel_index, seq, time_ns, amplitude_mv, phase_deg, status, exclude_reason, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.ID, p.TrialID, p.ChannelID, p.ChannelIndex, p.Seq, p.TimeNs, p.AmplitudeMv, p.PhaseDeg, p.Status, p.ExcludeReason, p.CreatedAt)
@@ -26,16 +37,32 @@ func (s *PulseStore) Insert(p *model.Pulse) (bool, error) {
 	return true, nil
 }
 
+// InsertBatch 在单个事务内原子写入整批脉冲，保证全有或全无语义：
+// 任一脉冲写入失败即回滚事务，整批不留任何记录；命中唯一键（重复事件）
+// 则跳过以保持幂等。返回实际新增的条数（重复不计入）。
 func (s *PulseStore) InsertBatch(pulses []*model.Pulse) (int, error) {
+	if len(pulses) == 0 {
+		return 0, nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("begin pulse batch tx: %w", err)
+	}
+	// 提交成功后 rollback 为 no-op，仅用于失败路径回滚。
+	defer func() { _ = tx.Rollback() }()
+
 	inserted := 0
 	for _, p := range pulses {
-		ok, err := s.Insert(p)
+		ok, err := insertPulse(tx, p)
 		if err != nil {
-			return inserted, err
+			return 0, err
 		}
 		if ok {
 			inserted++
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit pulse batch: %w", err)
 	}
 	return inserted, nil
 }
