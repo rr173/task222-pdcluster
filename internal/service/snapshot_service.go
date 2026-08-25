@@ -56,12 +56,14 @@ func (s *SnapshotService) GetSnapshot(id string) (*model.Snapshot, error) {
 }
 
 // Publish 发布快照：draft → published，并把旧的 published 标为 superseded。
+// published 为终态：对已发布（published）或被替代（superseded）的快照重复发布
+// 将被拒绝，且不改变其状态与发布时间。
 func (s *SnapshotService) Publish(id string) (*model.Snapshot, error) {
 	sn, err := s.store.Snapshots.Get(id)
 	if err != nil {
 		return nil, err
 	}
-	if !snapshot.Publishable(sn.Status) && sn.Status != model.SnapshotPublished {
+	if !snapshot.Publishable(sn.Status) {
 		return nil, model.ErrInvalidState
 	}
 	if next, ok := snapshot.Transition(sn.Status, "publish"); ok {

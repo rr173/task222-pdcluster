@@ -15,10 +15,12 @@ func IsPublished(status string) bool {
 
 // Transition 计算快照状态流转后的新状态。
 // draft → published → superseded（发布新版本时旧 published 被替代）。
+// published 与 superseded 均为终态：快照一旦发布即进入终态，
+// 重复发布同一快照必须被拒绝，且不改变其状态与发布时间。
 func Transition(current, action string) (string, bool) {
 	switch action {
 	case "publish":
-		if current == model.SnapshotDraft || current == model.SnapshotPublished {
+		if current == model.SnapshotDraft {
 			return model.SnapshotPublished, true
 		}
 	case "supersede":
