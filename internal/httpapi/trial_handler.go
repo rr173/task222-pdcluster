@@ -67,7 +67,7 @@ func (s *Server) handleReviewTrial(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, t)
+	writeJSON(w, http.StatusOK, t)
 }
 
 func (s *Server) handleSealTrial(w http.ResponseWriter, r *http.Request) {

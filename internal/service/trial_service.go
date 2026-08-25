@@ -61,7 +61,7 @@ func (s *TrialService) FinishAcquisition(id string) (*model.Trial, error) {
 
 // Review 进入复核：clustering → reviewing。
 func (s *TrialService) Review(id string) (*model.Trial, error) {
-	return s.transition(id, model.TrialSealed)
+	return s.transition(id, model.TrialReviewing)
 }
 
 // Seal 封存试验：reviewing → sealed（单向终态）。
